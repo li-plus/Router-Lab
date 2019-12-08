@@ -2,10 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <vector>
 #include <algorithm>
-
-std::vector<RoutingTableEntry> routing_table;
 
 /*
   RoutingTable Entry 的定义如下：
