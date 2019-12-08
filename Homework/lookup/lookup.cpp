@@ -2,6 +2,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <vector>
+#include <algorithm>
+
+std::vector<RoutingTableEntry> router_table;
+
 /*
   RoutingTable Entry 的定义如下：
   typedef struct {
@@ -26,8 +31,30 @@
  * 插入时如果已经存在一条 addr 和 len 都相同的表项，则替换掉原有的。
  * 删除时按照 addr 和 len 匹配。
  */
-void update(bool insert, RoutingTableEntry entry) {
-  // TODO:
+void update(bool insert, RoutingTableEntry entry)
+{
+  auto result = std::find_if(router_table.begin(), router_table.end(), [=](const RoutingTableEntry &e) {
+    return e.addr == entry.addr && e.len == entry.len;
+  });
+
+  if (insert)
+  {
+    if (result == router_table.end())
+    {
+      router_table.push_back(entry);
+    }
+    else
+    {
+      *result = entry;
+    }
+  }
+  else
+  {
+    if (result != router_table.end())
+    {
+      router_table.erase(result);
+    }
+  }
 }
 
 /**
@@ -37,9 +64,17 @@ void update(bool insert, RoutingTableEntry entry) {
  * @param if_index 如果查询到目标，把表项的 if_index 写入
  * @return 查到则返回 true ，没查到则返回 false
  */
-bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index) {
-  // TODO:
-  *nexthop = 0;
-  *if_index = 0;
-  return false;
+bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index)
+{
+  int match_len = -1;
+  for (auto &entry : router_table)
+  {
+    if ((addr & (0xffffffff >> (32 - entry.len))) == entry.addr && match_len < (int)entry.len)
+    {
+      *nexthop = entry.nexthop;
+      *if_index = entry.if_index;
+      match_len = entry.len;
+    }
+  }
+  return (match_len > -1);
 }
