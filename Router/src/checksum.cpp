@@ -1,7 +1,9 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include "router.h"
 
-uint16_t computeIPChecksum(const uint8_t *packet, size_t header_len)
+
+uint16_t Router::computeIPChecksum(const uint8_t *packet, size_t header_len)
 {
   uint16_t given_checksum = (packet[10] << 8) | packet[11];
 
@@ -34,7 +36,7 @@ uint16_t computeIPChecksum(const uint8_t *packet, size_t header_len)
  * @param len 即 packet 的长度，单位是字节，保证包含完整的 IP 头
  * @return 校验和无误则返回 true ，有误则返回 false
  */
-bool validateIPChecksum(uint8_t *packet, size_t len)
+bool Router::validateIPChecksum(uint8_t *packet, size_t len)
 {
   if (len < 1)
   {

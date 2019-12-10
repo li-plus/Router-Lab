@@ -20,3 +20,10 @@ typedef struct {
   // we don't store 'zero', as it is always 0
   RipEntry entries[RIP_MAX_ENTRY];
 } RipPacket;
+
+#define RIP_VERSION 0x02
+#define RIP_REQUEST_COMMAND 0x01
+#define RIP_RESPONSE_COMMAND 0x02
+#define RIP_REQUEST_FAMILY_ID 0x00
+#define RIP_RESPONSE_FAMILY_ID 0x02
+#define RIP_TAG 0x00

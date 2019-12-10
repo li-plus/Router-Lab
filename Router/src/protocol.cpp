@@ -1,27 +1,10 @@
 #include "rip.h"
+#include "router.h"
 #include <stdint.h>
 #include <stdlib.h>
-
-#define RIP_VERSION 0x02
-#define RIP_RESPONSE_COMMAND 0x02
-#define RIP_REQUEST_COMMAND 0x01
-#define RIP_RESPONSE_FAMILY_ID 0x02
-#define RIP_REQUEST_FAMILY_ID 0x00
-#define RIP_TAG 0x00
-
-static inline uint32_t readInt32(const uint8_t *buffer)
-{
-  return (buffer[3] << 24) | (buffer[2] << 16) | (buffer[1] << 8) | buffer[0];
-}
-
-static inline size_t writeInt32(uint8_t *buffer, uint32_t data)
-{
-  buffer[0] = (data & 0xff);
-  buffer[1] = (data >> 8) & 0xff;
-  buffer[2] = (data >> 16) & 0xff;
-  buffer[3] = (data >> 24) & 0xff;
-  return 4;
-}
+#include <cstring>
+#include <iostream>
+using namespace std;
 
 /*
   在头文件 rip.h 中定义了如下的结构体：
@@ -64,7 +47,7 @@ static inline size_t writeInt32(uint8_t *buffer, uint32_t data)
  * Metric 转换成小端序后是否在 [1,16] 的区间内，
  * Mask 的二进制是不是连续的 1 与连续的 0 组成等等。
  */
-bool disassemble(const uint8_t *packet, uint32_t len, RipPacket *output)
+bool Router::disassemble(const uint8_t *packet, uint32_t len, RipPacket *output)
 {
   size_t header_len = (packet[0] & 0x0f) * 4;
 
@@ -88,9 +71,9 @@ bool disassemble(const uint8_t *packet, uint32_t len, RipPacket *output)
     return false;
   }
 
-  uint8_t version = rip_packet[1];
-  if (version != 2)
+  if (rip_packet[1] != 2)
   {
+    // version must be 2
     return false;
   }
 
@@ -122,16 +105,12 @@ bool disassemble(const uint8_t *packet, uint32_t len, RipPacket *output)
       }
     }
 
-    output->entries[i].addr = readInt32(rip_packet + 4);
-    output->entries[i].mask = readInt32(rip_packet + 8);
-    uint32_t mask_little_endian = __builtin_bswap32(output->entries[i].mask);
-    int clo = __builtin_clz(~mask_little_endian);
-    if (mask_little_endian << clo)
+    output->entries[i] = *(RipEntry *)(rip_packet + 4);
+
+    if (output->entries[i].mask != 0 && output->entries[i].mask != len2mask(mask2len(output->entries[i].mask)))
     {
       return false;
     }
-    output->entries[i].nexthop = readInt32(rip_packet + 12);
-    output->entries[i].metric = readInt32(rip_packet + 16);
     if (!(0 < __builtin_bswap32(output->entries[i].metric) && __builtin_bswap32(output->entries[i].metric) < 17))
     {
       return false;
@@ -152,23 +131,22 @@ bool disassemble(const uint8_t *packet, uint32_t len, RipPacket *output)
  * 你写入 buffer 的数据长度和返回值都应该是四个字节的 RIP 头，加上每项 20 字节。
  * 需要注意一些没有保存在 RipPacket 结构体内的数据的填写。
  */
-uint32_t assemble(const RipPacket *rip, uint8_t *buffer)
+uint32_t Router::assemble(const RipPacket *rip, uint8_t *buffer)
 {
-  size_t write_size = 0;
-  buffer[write_size++] = rip->command;
-  buffer[write_size++] = RIP_VERSION;
-  buffer[write_size++] = 0;
-  buffer[write_size++] = 0;
+  uint8_t *writePtr = buffer;
+  *writePtr++ = rip->command;
+  *writePtr++ = RIP_VERSION;
+  *writePtr++ = 0;
+  *writePtr++ = 0;
+
   for (int i = 0; i < rip->numEntries; i++)
   {
-    buffer[write_size++] = 0;
-    buffer[write_size++] = (rip->command == RIP_REQUEST_COMMAND) ? RIP_REQUEST_FAMILY_ID : RIP_RESPONSE_FAMILY_ID;
-    buffer[write_size++] = 0; // tag
-    buffer[write_size++] = 0; // tag
-    write_size += writeInt32(buffer + write_size, rip->entries[i].addr);
-    write_size += writeInt32(buffer + write_size, rip->entries[i].mask);
-    write_size += writeInt32(buffer + write_size, rip->entries[i].nexthop);
-    write_size += writeInt32(buffer + write_size, rip->entries[i].metric);
+    *writePtr++ = 0;
+    *writePtr++ = (rip->command == RIP_REQUEST_COMMAND) ? RIP_REQUEST_FAMILY_ID : RIP_RESPONSE_FAMILY_ID;
+    *writePtr++ = 0; // tag
+    *writePtr++ = 0; // tag
+    memcpy(writePtr, (uint8_t *)&rip->entries[i], sizeof(RipEntry));
+    writePtr += sizeof(RipEntry);
   }
-  return write_size;
+  return writePtr - buffer;
 }

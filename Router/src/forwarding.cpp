@@ -11,7 +11,7 @@
  * @param len 即 packet 的长度，单位为字节
  * @return 校验和无误则返回 true ，有误则返回 false
  */
-bool forward(uint8_t *packet, size_t len)
+bool Router::forward(uint8_t *packet, size_t len)
 {
   if (!validateIPChecksum(packet, len))
   {

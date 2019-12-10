@@ -3,6 +3,8 @@
 #include <stdlib.h>
 
 #include <algorithm>
+#include <iostream>
+using namespace std;
 
 /*
   RoutingTable Entry 的定义如下：
@@ -28,7 +30,7 @@
  * 插入时如果已经存在一条 addr 和 len 都相同的表项，则替换掉原有的。
  * 删除时按照 addr 和 len 匹配。
  */
-void update(bool insert, RoutingTableEntry entry)
+void Router::update(bool insert, RoutingTableEntry entry)
 {
   auto result = std::find_if(routing_table.begin(), routing_table.end(), [=](const RoutingTableEntry &e) {
     return e.addr == entry.addr && e.len == entry.len;
@@ -61,15 +63,17 @@ void update(bool insert, RoutingTableEntry entry)
  * @param if_index 如果查询到目标，把表项的 if_index 写入
  * @return 查到则返回 true ，没查到则返回 false
  */
-bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index)
+bool Router::query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index, uint32_t *metric)
 {
   int match_len = -1;
   for (auto &entry : routing_table)
   {
-    if ((addr & (0xffffffff >> (32 - entry.len))) == entry.addr && match_len < (int)entry.len)
+    uint32_t mask = 0xffffffff >> (32 - entry.len);
+    if ((addr & mask) == entry.addr && match_len < (int)entry.len)
     {
       *nexthop = entry.nexthop;
       *if_index = entry.if_index;
+      *metric = entry.metric;
       match_len = entry.len;
     }
   }

@@ -69,7 +69,8 @@ bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index)
   int match_len = -1;
   for (auto &entry : routing_table)
   {
-    if ((addr & (0xffffffff >> (32 - entry.len))) == entry.addr && match_len < (int)entry.len)
+    uint32_t mask = 0xffffffff >> (32 - entry.len);
+    if ((addr & mask) == (entry.addr & mask) && match_len < (int)entry.len)
     {
       *nexthop = entry.nexthop;
       *if_index = entry.if_index;
