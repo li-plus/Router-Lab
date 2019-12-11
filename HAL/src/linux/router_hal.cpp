@@ -36,6 +36,36 @@ std::map<std::pair<in_addr_t, int>, macaddr_t> arp_table;
 std::map<std::pair<in_addr_t, int>, uint64_t> arp_timer;
 
 extern "C" {
+pcap_t *pcap_open_immediately(const char *device, int snaplen, int promisc, int to_ms, char *errbuf)
+{
+	pcap_t *p;
+	int status;
+
+	p = pcap_create(device, errbuf);
+	if (p == NULL)
+		return (NULL);
+	status = pcap_set_snaplen(p, snaplen);
+	if (status < 0)
+		goto fail;
+	status = pcap_set_promisc(p, promisc);
+	if (status < 0)
+		goto fail;
+	status = pcap_set_timeout(p, to_ms);
+	if (status < 0)
+		goto fail;
+
+  status = pcap_set_immediate_mode(p, 1);
+  if (status < 0)
+    goto fail; 
+	status = pcap_activate(p);
+	if (status < 0)
+		goto fail;
+	return (p);
+fail:
+	pcap_close(p);
+	return (NULL);
+}
+
 int HAL_Init(int debug, in_addr_t if_addrs[N_IFACE_ON_BOARD]) {
   if (inited) {
     return 0;
@@ -77,7 +107,7 @@ int HAL_Init(int debug, in_addr_t if_addrs[N_IFACE_ON_BOARD]) {
   char error_buffer[PCAP_ERRBUF_SIZE];
   for (int i = 0; i < N_IFACE_ON_BOARD; i++) {
     pcap_in_handles[i] =
-        pcap_open_live(interfaces[i], BUFSIZ, 1, 1, error_buffer);
+        pcap_open_immediately(interfaces[i], BUFSIZ, 1, 1, error_buffer);
     if (pcap_in_handles[i]) {
       pcap_setnonblock(pcap_in_handles[i], 1, error_buffer);
       if (debugEnabled) {
@@ -93,7 +123,7 @@ int HAL_Init(int debug, in_addr_t if_addrs[N_IFACE_ON_BOARD]) {
       }
     }
     pcap_out_handles[i] =
-        pcap_open_live(interfaces[i], BUFSIZ, 1, 0, error_buffer);
+        pcap_open_immediately(interfaces[i], BUFSIZ, 1, 0, error_buffer);
   }
 
   memcpy(interface_addrs, if_addrs, sizeof(interface_addrs));
