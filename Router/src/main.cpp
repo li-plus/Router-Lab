@@ -5,9 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <iostream>
 #include <algorithm>
-using namespace std;
 
 static const in_addr_t MULTICAST_ADDR = 0x090000e0;
 
@@ -18,7 +16,7 @@ uint8_t output[2048];
 // 2: 10.0.2.1
 // 3: 10.0.3.1
 // 你可以按需进行修改，注意端序
-in_addr_t addrs[N_IFACE_ON_BOARD] = {0xef002a0a, 0x01012a0a, 0x0202010a, 0x0103010a};
+in_addr_t addrs[N_IFACE_ON_BOARD] = {0x0203a8c0, 0x0104a8c0, 0x0202010a, 0x0103010a};
 
 void printMAC(const macaddr_t mac)
 {
@@ -54,10 +52,12 @@ void assembleUdp(uint8_t *buffer, size_t udp_len)
   buffer[2] = 0x02; // dst port is 520
   buffer[3] = 0x08;
   write16Little(buffer + 4, udp_len); // length
+  buffer[6] = buffer[7] = 0; // checksum
 }
 
 void assembleIp(uint8_t *buffer, size_t ip_len, in_addr_t src_addr, in_addr_t dst_addr)
 {
+  memset(buffer, 0, 20);
   buffer[0] = 0x45;                  // version & header len
   buffer[1] = 0xc0;                  // Differentiated Services Field: 0xc0 (DSCP: CS6, ECN: Not-ECT)
   write16Little(buffer + 2, ip_len); // length
@@ -75,18 +75,18 @@ void handleRipResponse(const uint8_t *buffer, const RipPacket &rip, int if_index
   // port must be 520
   if (!(buffer[20] == 0x02 && buffer[21] == 0x08 && buffer[22] == 0x02 && buffer[23] == 0x08))
   {
-    cout << "invalid reponse: invalid port" << endl;
+    printf("invalid reponse: invalid port\n");
     return;
   }
   // source addr cannot be mine
   if (isMyAddr(src_addr))
   {
-    cout << "invalid reponse: source addr is my addr" << endl;
+    printf("invalid reponse: source addr is my addr\n");
     return;
   }
 
   // update routing table
-  for (int i = 0; i < rip.numEntries; i++)
+  for (size_t i = 0; i < rip.numEntries; i++)
   {
     auto respEntry = rip.entries[i];
     if (isMyAddr(respEntry.nexthop))
@@ -148,11 +148,9 @@ void sendRoutingTable(int if_index, in_addr_t src_addr, in_addr_t dst_addr, maca
     resp.entries[resp.numEntries++] = {
         .addr = tableEntry.addr,
         .mask = len2mask(tableEntry.len),
-        .nexthop = tableEntry.nexthop,
+        .nexthop = 0, // TODO: send next hop if directly connectable
         .metric = tableEntry.metric};
   }
-  // assemble
-  memset(output, 0, sizeof(output));
   // rip
   uint32_t rip_len = Router::assemble(&resp, &output[20 + 8]);
   // udp
@@ -363,7 +361,7 @@ int main(int argc, char *argv[])
           if (output[8] == 0)
           {
             // ttl is 0
-            cout << "ttl is 0, drop packet" << endl;
+            printf("ttl is 0, drop packet\n");
             continue;
           }
 

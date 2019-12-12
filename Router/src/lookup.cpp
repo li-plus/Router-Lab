@@ -3,8 +3,6 @@
 #include <stdlib.h>
 
 #include <algorithm>
-#include <iostream>
-using namespace std;
 
 /*
   RoutingTable Entry 的定义如下：

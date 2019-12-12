@@ -3,8 +3,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <cstring>
-#include <iostream>
-using namespace std;
 
 /*
   在头文件 rip.h 中定义了如下的结构体：
@@ -84,7 +82,7 @@ bool Router::disassemble(const uint8_t *packet, uint32_t len, RipPacket *output)
 
   rip_packet += rip_header_len;
 
-  for (int i = 0; i < output->numEntries; i++)
+  for (size_t i = 0; i < output->numEntries; i++)
   {
     if ((rip_packet[2] | rip_packet[3]) != 0) // tag
     {
@@ -139,7 +137,7 @@ uint32_t Router::assemble(const RipPacket *rip, uint8_t *buffer)
   *writePtr++ = 0;
   *writePtr++ = 0;
 
-  for (int i = 0; i < rip->numEntries; i++)
+  for (size_t i = 0; i < rip->numEntries; i++)
   {
     *writePtr++ = 0;
     *writePtr++ = (rip->command == RIP_REQUEST_COMMAND) ? RIP_REQUEST_FAMILY_ID : RIP_RESPONSE_FAMILY_ID;

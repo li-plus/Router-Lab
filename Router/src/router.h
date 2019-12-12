@@ -67,5 +67,5 @@ static inline size_t mask2len(uint32_t mask)
 
 static inline uint32_t len2mask(size_t len)
 {
-  return (len == 0) ? 0 : 0xffffffff >> (32 - len);
+  return 0xffffffff >> (32 - len);
 }

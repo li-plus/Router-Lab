@@ -9,7 +9,7 @@ uint16_t Router::computeIPChecksum(const uint8_t *packet, size_t header_len)
 
   uint32_t checksum = 0;
 
-  int i;
+  size_t i;
   for (i = 0; i < header_len; i += 2)
   {
     checksum += (packet[i] << 8) | packet[i + 1];
