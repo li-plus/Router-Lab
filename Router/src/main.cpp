@@ -52,7 +52,7 @@ void assembleUdp(uint8_t *buffer, size_t udp_len)
   buffer[2] = 0x02; // dst port is 520
   buffer[3] = 0x08;
   write16Little(buffer + 4, udp_len); // length
-  buffer[6] = buffer[7] = 0; // checksum
+  buffer[6] = buffer[7] = 0;          // checksum
 }
 
 void assembleIp(uint8_t *buffer, size_t ip_len, in_addr_t src_addr, in_addr_t dst_addr)
@@ -138,9 +138,9 @@ void sendRoutingTable(int if_index, in_addr_t src_addr, in_addr_t dst_addr, maca
   resp.numEntries = 0;
   resp.command = RIP_RESPONSE_COMMAND;
 
-  // split horizon
   for (auto &tableEntry : Router::routing_table)
   {
+    // split horizon
     if (if_index == tableEntry.if_index)
     {
       continue;
@@ -353,19 +353,19 @@ int main(int argc, char *argv[])
         if (HAL_ArpGetMacAddress(dest_if, nexthop, dest_mac) == 0)
         {
           // found
-          memcpy(output, packet, res);
+          // memcpy(output, packet, res);
           // update ttl and checksum
-          Router::forward(output, res);
+          Router::forward(packet, res);
 
           // TODO: you might want to check ttl=0 case
-          if (output[8] == 0)
+          if (packet[8] == 0)
           {
             // ttl is 0
             printf("ttl is 0, drop packet\n");
             continue;
           }
 
-          HAL_SendIPPacket(dest_if, output, res, dest_mac);
+          HAL_SendIPPacket(dest_if, packet, res, dest_mac);
         }
         else
         {
