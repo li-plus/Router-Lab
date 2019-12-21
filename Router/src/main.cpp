@@ -138,8 +138,10 @@ void sendRoutingTable(int if_index, in_addr_t src_addr, in_addr_t dst_addr, maca
   resp.numEntries = 0;
   resp.command = RIP_RESPONSE_COMMAND;
 
-  for (auto &tableEntry : Router::routing_table)
+  for (int i = 0; i < Router::routing_table.size(); i++)
   {
+    auto tableEntry = Router::routing_table[i];
+
     // split horizon
     if (if_index == tableEntry.if_index)
     {
@@ -150,15 +152,23 @@ void sendRoutingTable(int if_index, in_addr_t src_addr, in_addr_t dst_addr, maca
         .mask = len2mask(tableEntry.len),
         .nexthop = 0, // TODO: send next hop if directly connectable
         .metric = tableEntry.metric};
+
+    if (i == Router::routing_table.size() - 1 || (i + 1) % RIP_MAX_ENTRY == 0)
+    {
+      // rip
+      uint32_t rip_len = Router::assemble(&resp, &output[20 + 8]);
+      // udp
+      assembleUdp(output + 20, 8 + rip_len);
+      // ip
+      assembleIp(output, 20 + 8 + rip_len, src_addr, dst_addr);
+      // send
+      HAL_SendIPPacket(if_index, output, rip_len + 20 + 8, dst_mac);
+
+      resp = RipPacket();
+      resp.numEntries = 0;
+      resp.command = RIP_RESPONSE_COMMAND;
+    }
   }
-  // rip
-  uint32_t rip_len = Router::assemble(&resp, &output[20 + 8]);
-  // udp
-  assembleUdp(output + 20, 8 + rip_len);
-  // ip
-  assembleIp(output, 20 + 8 + rip_len, src_addr, dst_addr);
-  // send
-  HAL_SendIPPacket(if_index, output, rip_len + 20 + 8, dst_mac);
 }
 
 int main(int argc, char *argv[])
